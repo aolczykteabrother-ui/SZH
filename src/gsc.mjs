@@ -1,16 +1,27 @@
+import { readFileSync } from "node:fs";
 import { GoogleAuth } from "google-auth-library";
 
 const SEARCH_CONSOLE_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+const DEFAULT_SECRET_FILE = "/etc/secrets/gsc-service-account.json";
 
 function serviceAccountCredentials() {
-  const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
-  if (!encoded) {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON_B64 is not configured.");
-  }
+  const secretFile = process.env.GOOGLE_SERVICE_ACCOUNT_FILE || DEFAULT_SECRET_FILE;
+
   try {
-    return JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
-  } catch (error) {
-    throw new Error(`Invalid GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${error.message}`);
+    const raw = readFileSync(secretFile, "utf8");
+    return JSON.parse(raw);
+  } catch (fileError) {
+    const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
+    if (!encoded) {
+      throw new Error(
+        `Google service account credentials are not configured. Add the Render secret file ${secretFile} or GOOGLE_SERVICE_ACCOUNT_JSON_B64.`,
+      );
+    }
+    try {
+      return JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+    } catch (envError) {
+      throw new Error(`Invalid Google service account credentials: ${envError.message}`);
+    }
   }
 }
 
